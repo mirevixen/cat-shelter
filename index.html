@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>🐾 Cat Shelter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #fdf6ee;
+      --card: #ffffff;
+      --accent: #c1440e;
+      --accent2: #e8a87c;
+      --text: #2a1f14;
+      --muted: #8a7060;
+      --border: #e8ddd4;
+      --available: #2d7a4f;
+      --adopted: #555;
+      --foster: #b06000;
+      --medical: #9b2335;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* HEADER */
+    header {
+      background: var(--text);
+      color: #fdf6ee;
+      padding: 18px 20px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.15);
+    }
+    header h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.5rem;
+      letter-spacing: 0.02em;
+    }
+    header h1 span { color: var(--accent2); }
+    #add-btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 8px 18px;
+      font-size: 0.95rem;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    #add-btn:hover { background: #a33a0c; }
+
+    /* SEARCH & FILTER BAR */
+    #controls {
+      padding: 14px 16px;
+      display: flex;
+      gap: 10px;
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+    #search {
+      flex: 1;
+      padding: 9px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 50px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      background: white;
+      outline: none;
+      color: var(--text);
+    }
+    #search:focus { border-color: var(--accent2); }
+    #filter-status {
+      padding: 9px 12px;
+      border: 1.5px solid var(--border);
+      border-radius: 50px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.9rem;
+      background: white;
+      color: var(--text);
+      outline: none;
+      cursor: pointer;
+    }
+
+    /* CAT GRID */
+    #cat-list {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 14px;
+    }
+    .cat-card {
+      background: var(--card);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      border: 1px solid var(--border);
+    }
+    .cat-card:hover { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(0,0,0,0.12); }
+    .cat-card img {
+      width: 100%;
+      aspect-ratio: 1;
+      object-fit: cover;
+      display: block;
+      background: var(--border);
+    }
+    .cat-card .no-photo {
+      width: 100%;
+      aspect-ratio: 1;
+      background: linear-gradient(135deg, #f0e6da, #e8d5c4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2.5rem;
+    }
+    .cat-card-info { padding: 10px 12px; }
+    .cat-card-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1rem;
+      font-weight: 700;
+      margin-bottom: 4px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .cat-card-sub { font-size: 0.78rem; color: var(--muted); margin-bottom: 6px; }
+    .status-badge {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 500;
+      padding: 2px 9px;
+      border-radius: 50px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .status-Available { background: #d6f0e0; color: var(--available); }
+    .status-Adopted { background: #e8e8e8; color: var(--adopted); }
+    .status-Foster { background: #fde8c8; color: var(--foster); }
+    .status-Medical { background: #fde0e0; color: var(--medical); }
+
+    #empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+    }
+    #empty-state .big-paw { font-size: 3rem; margin-bottom: 12px; }
+
+    /* LOADING */
+    #loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--muted);
+      font-size: 1rem;
+    }
+
+    /* MODAL OVERLAY */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(42,31,20,0.55);
+      z-index: 200;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: var(--bg);
+      width: 100%;
+      max-width: 520px;
+      max-height: 92vh;
+      border-radius: 24px 24px 0 0;
+      overflow-y: auto;
+      padding: 24px 20px 40px;
+      animation: slideUp 0.3s ease;
+    }
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to { transform: translateY(0); }
+    }
+    .modal-handle {
+      width: 40px;
+      height: 4px;
+      background: var(--border);
+      border-radius: 2px;
+      margin: 0 auto 20px;
+    }
+    .modal h2 {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.4rem;
+      margin-bottom: 20px;
+    }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 5px;
+    }
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      background: white;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .form-group input:focus,
+    .form-group select:focus,
+    .form-group textarea:focus { border-color: var(--accent2); }
+    .form-group textarea { resize: vertical; min-height: 80px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    /* Photo upload */
+    .photo-upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.2s, background 0.2s;
+      position: relative;
+    }
+    .photo-upload-area:hover { border-color: var(--accent2); background: #fdf0e8; }
+    .photo-upload-area input[type="file"] {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      cursor: pointer;
+      width: 100%;
+      height: 100%;
+    }
+    .photo-upload-area .upload-icon { font-size: 2rem; margin-bottom: 6px; }
+    .photo-upload-area p { font-size: 0.85rem; color: var(--muted); }
+    #photo-preview {
+      width: 100%;
+      max-height: 200px;
+      object-fit: cover;
+      border-radius: 10px;
+      margin-top: 10px;
+      display: none;
+    }
+    #upload-progress {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 6px;
+      display: none;
+    }
+
+    .btn-row { display: flex; gap: 10px; margin-top: 24px; }
+    .btn-primary {
+      flex: 1;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 50px;
+      padding: 13px;
+      font-size: 1rem;
+      font-family: 'DM Sans', sans-serif;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-primary:hover { background: #a33a0c; }
+    .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+    .btn-secondary {
+      flex: 1;
+      background: transparent;
+      color: var(--text);
+      border: 1.5px solid var(--border);
+      border-radius: 50px;
+      padding: 13px;
+      font-size: 1rem;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-danger {
+      background: #fde0e0;
+      color: var(--medical);
+      border: none;
+      border-radius: 50px;
+      padding: 13px 20px;
+      font-size: 1rem;
+      font-family: 'DM Sans', sans-serif;
+      cursor: pointer;
+    }
+
+    /* DETAIL VIEW */
+    #detail-photo {
+      width: 100%;
+      max-height: 260px;
+      object-fit: cover;
+      border-radius: 14px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    .detail-no-photo {
+      width: 100%;
+      height: 160px;
+      background: linear-gradient(135deg, #f0e6da, #e8d5c4);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 4rem;
+      margin-bottom: 16px;
+    }
+    .detail-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.8rem;
+      margin-bottom: 6px;
+    }
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 16px 0;
+    }
+    .detail-field {
+      background: white;
+      border-radius: 10px;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+    }
+    .detail-field .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 2px; }
+    .detail-field .value { font-size: 0.95rem; font-weight: 500; }
+    .detail-notes {
+      background: white;
+      border-radius: 10px;
+      padding: 12px 14px;
+      border: 1px solid var(--border);
+      margin-bottom: 10px;
+    }
+    .detail-notes .label { font-size: 0.75rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+    .detail-notes .value { font-size: 0.9rem; line-height: 1.5; white-space: pre-wrap; }
+
+    /* Toast */
+    #toast {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--text);
+      color: white;
+      padding: 10px 22px;
+      border-radius: 50px;
+      font-size: 0.9rem;
+      z-index: 999;
+      transition: transform 0.3s;
+      white-space: nowrap;
+    }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+
+    /* CONFIG SCREEN */
+    #config-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 30px 20px;
+      text-align: center;
+    }
+    #config-screen .paw { font-size: 3.5rem; margin-bottom: 10px; }
+    #config-screen h2 { font-family: 'Playfair Display', serif; font-size: 1.6rem; margin-bottom: 8px; }
+    #config-screen p { color: var(--muted); margin-bottom: 24px; font-size: 0.95rem; line-height: 1.6; }
+    #config-screen input {
+      width: 100%;
+      max-width: 420px;
+      padding: 11px 16px;
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 0.95rem;
+      margin-bottom: 12px;
+      outline: none;
+      display: block;
+    }
+    #config-screen input:focus { border-color: var(--accent2); }
+    #config-screen button {
+      width: 100%;
+      max-width: 420px;
+    }
+    #config-error { color: var(--medical); font-size: 0.87rem; margin-top: 8px; display: none; }
+  </style>
+</head>
+<body>
+
+<!-- CONFIG SCREEN (shown on first run) -->
+<div id="config-screen">
+  <div class="paw">🐾</div>
+  <h2>Welcome to Cat Shelter</h2>
+  <p>To get started, enter your Supabase credentials.<br>You only need to do this once — they'll be saved in your browser.</p>
+  <input type="text" id="cfg-url" placeholder="Supabase Project URL (https://xxxx.supabase.co)" />
+  <input type="text" id="cfg-key" placeholder="Supabase anon/public key" />
+  <button class="btn-primary" onclick="saveConfig()">Connect & Start</button>
+  <div id="config-error">Could not connect. Please check your credentials and try again.</div>
+</div>
+
+<!-- MAIN APP (hidden until configured) -->
+<div id="app" style="display:none">
+
+  <header>
+    <h1>🐾 <span>Cat</span> Shelter</h1>
+    <button id="add-btn" onclick="openAddModal()">+ Add Cat</button>
+  </header>
+
+  <div id="controls">
+    <input type="text" id="search" placeholder="Search by name, color…" oninput="renderCats()" />
+    <select id="filter-status" onchange="renderCats()">
+      <option value="">All</option>
+      <option value="Available">Available</option>
+      <option value="Adopted">Adopted</option>
+      <option value="Foster">Foster</option>
+      <option value="Medical">Medical</option>
+    </select>
+  </div>
+
+  <div id="loading">Loading cats… 🐱</div>
+  <div id="cat-list" style="display:none"></div>
+
+</div>
+
+<!-- ADD / EDIT MODAL -->
+<div class="modal-overlay" id="form-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <h2 id="form-title">Add New Cat</h2>
+
+    <div class="form-group">
+      <label>Name (optional)</label>
+      <input type="text" id="f-name" placeholder="e.g. Whiskers" />
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Gender</label>
+        <select id="f-gender">
+          <option value="">Unknown</option>
+          <option value="Female">Female</option>
+          <option value="Male">Male</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Approx. Age</label>
+        <input type="text" id="f-age" placeholder="e.g. 2 years" />
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Color / Markings</label>
+        <input type="text" id="f-color" placeholder="e.g. orange tabby" />
+      </div>
+      <div class="form-group">
+        <label>Adoption Status</label>
+        <select id="f-status">
+          <option value="Available">Available</option>
+          <option value="Foster">Foster</option>
+          <option value="Medical">Medical</option>
+          <option value="Adopted">Adopted</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Found Location</label>
+      <input type="text" id="f-location" placeholder="e.g. Near train station, Ostrava" />
+    </div>
+    <div class="form-group">
+      <label>Found Date</label>
+      <input type="date" id="f-date" />
+    </div>
+    <div class="form-group">
+      <label>Medical Notes</label>
+      <textarea id="f-medical" placeholder="Vaccinations, treatments, conditions…"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Other Notes</label>
+      <textarea id="f-notes" placeholder="Personality, special needs…"></textarea>
+    </div>
+    <div class="form-group">
+      <label>Photo</label>
+      <div class="photo-upload-area">
+        <input type="file" id="f-photo" accept="image/*" onchange="previewPhoto(event)" />
+        <div class="upload-icon">📷</div>
+        <p>Tap to choose a photo</p>
+      </div>
+      <img id="photo-preview" src="" alt="Preview" />
+      <div id="upload-progress">Uploading photo…</div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-secondary" onclick="closeFormModal()">Cancel</button>
+      <button class="btn-primary" id="save-btn" onclick="saveCat()">Save Cat</button>
+    </div>
+  </div>
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-overlay" id="detail-modal">
+  <div class="modal">
+    <div class="modal-handle"></div>
+    <img id="detail-photo" src="" alt="Cat photo" />
+    <div id="detail-no-photo" class="detail-no-photo">🐱</div>
+    <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
+      <div class="detail-name" id="detail-name"></div>
+      <span class="status-badge" id="detail-status-badge"></span>
+    </div>
+    <div class="detail-grid" id="detail-grid"></div>
+    <div id="detail-medical-wrap" class="detail-notes">
+      <div class="label">Medical Notes</div>
+      <div class="value" id="detail-medical"></div>
+    </div>
+    <div id="detail-notes-wrap" class="detail-notes">
+      <div class="label">Other Notes</div>
+      <div class="value" id="detail-notes-val"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn-danger" id="delete-btn">Delete</button>
+      <button class="btn-secondary" onclick="closeDetailModal()">Close</button>
+      <button class="btn-primary" id="edit-btn">Edit</button>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<script>
+  // ─── CONFIG ───────────────────────────────────────────────
+  let SUPABASE_URL = localStorage.getItem('sb_url') || '';
+  let SUPABASE_KEY = localStorage.getItem('sb_key') || '';
+
+  function saveConfig() {
+    const url = document.getElementById('cfg-url').value.trim();
+    const key = document.getElementById('cfg-key').value.trim();
+    if (!url || !key) { showConfigError('Please fill in both fields.'); return; }
+    SUPABASE_URL = url.replace(/\/$/, '');
+    SUPABASE_KEY = key;
+    localStorage.setItem('sb_url', SUPABASE_URL);
+    localStorage.setItem('sb_key', SUPABASE_KEY);
+    initApp();
+  }
+
+  function showConfigError(msg) {
+    const el = document.getElementById('config-error');
+    el.textContent = msg;
+    el.style.display = 'block';
+  }
+
+  // ─── SUPABASE HELPERS ─────────────────────────────────────
+  async function sbFetch(path, options = {}) {
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+      ...options,
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': 'application/json',
+        'Prefer': options.prefer || '',
+        ...options.headers,
+      }
+    });
+    return res;
+  }
+
+  async function getCats() {
+    const res = await sbFetch('cats?select=*&order=created_at.desc');
+    if (!res.ok) throw new Error('Failed to fetch');
+    return res.json();
+  }
+
+  async function insertCat(data) {
+    const res = await sbFetch('cats', {
+      method: 'POST',
+      prefer: 'return=representation',
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to insert');
+    const rows = await res.json();
+    return rows[0];
+  }
+
+  async function updateCat(id, data) {
+    const res = await sbFetch(`cats?id=eq.${id}`, {
+      method: 'PATCH',
+      prefer: 'return=representation',
+      body: JSON.stringify(data)
+    });
+    if (!res.ok) throw new Error('Failed to update');
+  }
+
+  async function deleteCat(id) {
+    const res = await sbFetch(`cats?id=eq.${id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error('Failed to delete');
+  }
+
+  async function uploadPhoto(file, catId) {
+    const ext = file.name.split('.').pop();
+    const path = `${catId}.${ext}`;
+    const res = await fetch(`${SUPABASE_URL}/storage/v1/object/cat-photos/${path}`, {
+      method: 'POST',
+      headers: {
+        'apikey': SUPABASE_KEY,
+        'Authorization': `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': file.type,
+        'x-upsert': 'true'
+      },
+      body: file
+    });
+    if (!res.ok) throw new Error('Photo upload failed');
+    return `${SUPABASE_URL}/storage/v1/object/public/cat-photos/${path}`;
+  }
+
+  // ─── APP STATE ────────────────────────────────────────────
+  let allCats = [];
+  let editingId = null;
+  let photoFile = null;
+
+  async function initApp() {
+    document.getElementById('config-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    await loadCats();
+  }
+
+  async function loadCats() {
+    document.getElementById('loading').style.display = 'block';
+    document.getElementById('cat-list').style.display = 'none';
+    try {
+      allCats = await getCats();
+      renderCats();
+    } catch (e) {
+      document.getElementById('loading').textContent = '⚠️ Could not load cats. Check your connection.';
+    }
+  }
+
+  function renderCats() {
+    const search = document.getElementById('search').value.toLowerCase();
+    const statusFilter = document.getElementById('filter-status').value;
+
+    let cats = allCats.filter(c => {
+      const matchSearch = !search ||
+        (c.name || '').toLowerCase().includes(search) ||
+        (c.color || '').toLowerCase().includes(search) ||
+        (c.found_location || '').toLowerCase().includes(search);
+      const matchStatus = !statusFilter || c.adoption_status === statusFilter;
+      return matchSearch && matchStatus;
+    });
+
+    document.getElementById('loading').style.display = 'none';
+    const list = document.getElementById('cat-list');
+    list.style.display = 'grid';
+    list.innerHTML = '';
+
+    if (cats.length === 0) {
+      list.innerHTML = `<div class="empty-state" style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--muted)">
+        <div style="font-size:3rem;margin-bottom:12px">🐾</div>
+        <div>No cats found</div>
+      </div>`;
+      return;
+    }
+
+    cats.forEach(cat => {
+      const card = document.createElement('div');
+      card.className = 'cat-card';
+      card.onclick = () => openDetail(cat);
+
+      const photoHtml = cat.photo_url
+        ? `<img src="${cat.photo_url}" alt="${cat.name || 'Cat'}" loading="lazy" />`
+        : `<div class="no-photo">🐱</div>`;
+
+      const displayName = cat.name || 'Unknown';
+      const sub = [cat.gender, cat.color].filter(Boolean).join(' · ') || 'No details';
+      const status = cat.adoption_status || 'Available';
+
+      card.innerHTML = `
+        ${photoHtml}
+        <div class="cat-card-info">
+          <div class="cat-card-name">${displayName}</div>
+          <div class="cat-card-sub">${sub}</div>
+          <span class="status-badge status-${status}">${status}</span>
+        </div>`;
+      list.appendChild(card);
+    });
+  }
+
+  // ─── ADD / EDIT FORM ──────────────────────────────────────
+  function openAddModal() {
+    editingId = null;
+    photoFile = null;
+    document.getElementById('form-title').textContent = 'Add New Cat';
+    document.getElementById('save-btn').textContent = 'Save Cat';
+    clearForm();
+    document.getElementById('form-modal').classList.add('open');
+  }
+
+  function openEditModal(cat) {
+    editingId = cat.id;
+    photoFile = null;
+    document.getElementById('form-title').textContent = 'Edit Cat';
+    document.getElementById('save-btn').textContent = 'Update Cat';
+    document.getElementById('f-name').value = cat.name || '';
+    document.getElementById('f-gender').value = cat.gender || '';
+    document.getElementById('f-age').value = cat.approximate_age || '';
+    document.getElementById('f-color').value = cat.color || '';
+    document.getElementById('f-status').value = cat.adoption_status || 'Available';
+    document.getElementById('f-location').value = cat.found_location || '';
+    document.getElementById('f-date').value = cat.found_date || '';
+    document.getElementById('f-medical').value = cat.medical_notes || '';
+    document.getElementById('f-notes').value = cat.other_notes || '';
+    const preview = document.getElementById('photo-preview');
+    if (cat.photo_url) { preview.src = cat.photo_url; preview.style.display = 'block'; }
+    else { preview.style.display = 'none'; }
+    document.getElementById('detail-modal').classList.remove('open');
+    document.getElementById('form-modal').classList.add('open');
+  }
+
+  function closeFormModal() {
+    document.getElementById('form-modal').classList.remove('open');
+    clearForm();
+  }
+
+  function clearForm() {
+    ['f-name','f-gender','f-age','f-color','f-location','f-date','f-medical','f-notes'].forEach(id => {
+      const el = document.getElementById(id);
+      el.value = el.tagName === 'SELECT' ? el.options[0].value : '';
+    });
+    document.getElementById('f-status').value = 'Available';
+    document.getElementById('photo-preview').style.display = 'none';
+    document.getElementById('photo-preview').src = '';
+    document.getElementById('f-photo').value = '';
+    photoFile = null;
+  }
+
+  function previewPhoto(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    photoFile = file;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const preview = document.getElementById('photo-preview');
+      preview.src = ev.target.result;
+      preview.style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  async function saveCat() {
+    const btn = document.getElementById('save-btn');
+    btn.disabled = true;
+    btn.textContent = 'Saving…';
+
+    const data = {
+      name: document.getElementById('f-name').value.trim() || null,
+      gender: document.getElementById('f-gender').value || null,
+      approximate_age: document.getElementById('f-age').value.trim() || null,
+      color: document.getElementById('f-color').value.trim() || null,
+      adoption_status: document.getElementById('f-status').value,
+      found_location: document.getElementById('f-location').value.trim() || null,
+      found_date: document.getElementById('f-date').value || null,
+      medical_notes: document.getElementById('f-medical').value.trim() || null,
+      other_notes: document.getElementById('f-notes').value.trim() || null,
+    };
+
+    try {
+      let catId = editingId;
+
+      if (!editingId) {
+        const newCat = await insertCat(data);
+        catId = newCat.id;
+      } else {
+        await updateCat(editingId, data);
+      }
+
+      // Upload photo if selected
+      if (photoFile && catId) {
+        document.getElementById('upload-progress').style.display = 'block';
+        const url = await uploadPhoto(photoFile, catId);
+        await updateCat(catId, { photo_url: url });
+      }
+
+      closeFormModal();
+      showToast(editingId ? 'Cat updated! 🐾' : 'Cat added! 🐾');
+      await loadCats();
+    } catch (e) {
+      showToast('Something went wrong. Please try again.');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = editingId ? 'Update Cat' : 'Save Cat';
+      document.getElementById('upload-progress').style.display = 'none';
+    }
+  }
+
+  // ─── DETAIL VIEW ──────────────────────────────────────────
+  function openDetail(cat) {
+    const photo = document.getElementById('detail-photo');
+    const noPhoto = document.getElementById('detail-no-photo');
+    if (cat.photo_url) {
+      photo.src = cat.photo_url;
+      photo.style.display = 'block';
+      noPhoto.style.display = 'none';
+    } else {
+      photo.style.display = 'none';
+      noPhoto.style.display = 'flex';
+    }
+
+    document.getElementById('detail-name').textContent = cat.name || 'Unknown Cat';
+    const badge = document.getElementById('detail-status-badge');
+    badge.textContent = cat.adoption_status || 'Available';
+    badge.className = `status-badge status-${cat.adoption_status || 'Available'}`;
+
+    const fields = [
+      { label: 'Gender', value: cat.gender },
+      { label: 'Age', value: cat.approximate_age },
+      { label: 'Color', value: cat.color },
+      { label: 'Found Date', value: cat.found_date ? new Date(cat.found_date).toLocaleDateString() : null },
+      { label: 'Found Location', value: cat.found_location },
+      { label: 'Added', value: new Date(cat.created_at).toLocaleDateString() },
+    ];
+
+    const grid = document.getElementById('detail-grid');
+    grid.innerHTML = '';
+    fields.forEach(f => {
+      if (!f.value) return;
+      const el = document.createElement('div');
+      el.className = 'detail-field';
+      // Found location gets full width
+      if (f.label === 'Found Location') el.style.gridColumn = '1 / -1';
+      el.innerHTML = `<div class="label">${f.label}</div><div class="value">${f.value}</div>`;
+      grid.appendChild(el);
+    });
+
+    const medWrap = document.getElementById('detail-medical-wrap');
+    if (cat.medical_notes) {
+      document.getElementById('detail-medical').textContent = cat.medical_notes;
+      medWrap.style.display = 'block';
+    } else {
+      medWrap.style.display = 'none';
+    }
+
+    const notesWrap = document.getElementById('detail-notes-wrap');
+    if (cat.other_notes) {
+      document.getElementById('detail-notes-val').textContent = cat.other_notes;
+      notesWrap.style.display = 'block';
+    } else {
+      notesWrap.style.display = 'none';
+    }
+
+    document.getElementById('edit-btn').onclick = () => openEditModal(cat);
+    document.getElementById('delete-btn').onclick = () => confirmDelete(cat);
+
+    document.getElementById('detail-modal').classList.add('open');
+  }
+
+  function closeDetailModal() {
+    document.getElementById('detail-modal').classList.remove('open');
+  }
+
+  async function confirmDelete(cat) {
+    const name = cat.name || 'this cat';
+    if (!confirm(`Are you sure you want to delete ${name}? This cannot be undone.`)) return;
+    try {
+      await deleteCat(cat.id);
+      closeDetailModal();
+      showToast('Cat removed.');
+      await loadCats();
+    } catch (e) {
+      showToast('Could not delete. Please try again.');
+    }
+  }
+
+  // ─── TOAST ────────────────────────────────────────────────
+  function showToast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+  }
+
+  // ─── CLOSE MODALS ON BACKDROP CLICK ──────────────────────
+  document.querySelectorAll('.modal-overlay').forEach(overlay => {
+    overlay.addEventListener('click', e => {
+      if (e.target === overlay) overlay.classList.remove('open');
+    });
+  });
+
+  // ─── INIT ─────────────────────────────────────────────────
+  if (SUPABASE_URL && SUPABASE_KEY) {
+    initApp();
+  } else {
+    document.getElementById('config-screen').style.display = 'flex';
+    document.getElementById('config-screen').style.flexDirection = 'column';
+  }
+</script>
+</body>
+</html>
