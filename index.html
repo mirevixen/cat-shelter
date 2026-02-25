@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>🐾 Evidence koček v Sissi</title>
+  <title>🐾 Evidence koček</title>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
   <!-- SheetJS pro export do Excelu -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -51,6 +51,17 @@
       cursor: pointer; text-decoration: underline; background: none; border: none; font-family: 'DM Sans', sans-serif;
     }
     #forgot-link:hover { color: var(--accent); }
+
+    /* ── RESET PASSWORD SCREEN ── */
+    #reset-screen {
+      display: none; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 100vh; padding: 30px 20px; text-align: center;
+    }
+    #reset-screen .paw { font-size: 3.5rem; margin-bottom: 10px; }
+    #reset-screen h2 { font-family: 'Playfair Display', serif; font-size: 1.6rem; margin-bottom: 6px; }
+    #reset-screen .subtitle { color: var(--muted); margin-bottom: 28px; font-size: 0.95rem; }
+    #reset-error { color: var(--medical); font-size: 0.85rem; margin-top: 10px; display: none; }
+    #reset-success { color: var(--available); font-size: 0.85rem; margin-top: 10px; display: none; }
 
     /* ── HEADER ── */
     header {
@@ -258,7 +269,7 @@
 <!-- LOGIN -->
 <div id="login-screen">
   <div class="paw">🐾</div>
-  <h2>Evidence koček v Sissi</h2>
+  <h2>Evidence koček</h2>
   <p class="subtitle">Přihlaste se pro přístup k databázi</p>
   <div class="login-box">
     <input type="email" id="login-email" placeholder="E-mailová adresa"
@@ -272,11 +283,26 @@
   </div>
 </div>
 
+<!-- RESET PASSWORD SCREEN -->
+<div id="reset-screen">
+  <div class="paw">🐾</div>
+  <h2>Nové heslo</h2>
+  <p class="subtitle">Zadejte své nové heslo</p>
+  <div class="login-box">
+    <input type="password" id="reset-password" placeholder="Nové heslo (min. 6 znaků)"
+      onkeydown="if(event.key==='Enter')document.getElementById('reset-password2').focus()" />
+    <input type="password" id="reset-password2" placeholder="Zopakujte nové heslo"
+      onkeydown="if(event.key==='Enter')submitNewPassword()" />
+    <button class="btn-primary" onclick="submitNewPassword()" id="reset-btn">Uložit nové heslo</button>
+    <div id="reset-error"></div>
+    <div id="reset-success"></div>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app" style="display:none">
   <header>
     <h1>🐾 <span>Evidence</span> koček</h1>
-    <h3>Kočičí domov Sissi</h3>
     <div class="header-actions">
       <button id="add-btn" onclick="openAddModal()">+ Přidat kočku</button>
       <button id="export-btn" onclick="exportToXlsx()">⬇ Export</button>
@@ -897,7 +923,6 @@
     ].filter(f => f.value);
     if (auditFields.length > 0) section('Historie záznamu', auditFields);
     document.getElementById('edit-btn').onclick = () => openEditModal(cat);
-    document.getElementById('delete-btn').onclick = () => confirmDelete(cat);
     document.getElementById('detail-modal').classList.add('open');
   }
 
@@ -993,8 +1018,73 @@
     o.addEventListener('click', e => { if (e.target === o) o.classList.remove('open'); });
   });
 
+  // ── RESET PASSWORD ────────────────────────────────────────
+  let resetToken = null;
+
+  function showResetScreen() {
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'none';
+    const rs = document.getElementById('reset-screen');
+    rs.style.display = 'flex'; rs.style.flexDirection = 'column';
+  }
+
+  async function submitNewPassword() {
+    const pw1 = document.getElementById('reset-password').value;
+    const pw2 = document.getElementById('reset-password2').value;
+    const btn = document.getElementById('reset-btn');
+    const errEl = document.getElementById('reset-error');
+    const okEl = document.getElementById('reset-success');
+    errEl.style.display = 'none'; okEl.style.display = 'none';
+
+    if (pw1.length < 6) {
+      errEl.textContent = 'Heslo musí mít alespoň 6 znaků.';
+      errEl.style.display = 'block'; return;
+    }
+    if (pw1 !== pw2) {
+      errEl.textContent = 'Hesla se neshodují.';
+      errEl.style.display = 'block'; return;
+    }
+
+    btn.disabled = true; btn.textContent = 'Ukládám…';
+    try {
+      const res = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+        method: 'PUT',
+        headers: {
+          'apikey': SUPABASE_KEY,
+          'Authorization': `Bearer ${resetToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ password: pw1 })
+      });
+      if (!res.ok) throw new Error();
+      okEl.textContent = 'Heslo bylo úspěšně změněno. Nyní se můžete přihlásit.';
+      okEl.style.display = 'block';
+      btn.textContent = 'Uloženo ✓';
+      // Po 2 sekundách přesměruj na přihlášení
+      setTimeout(() => {
+        document.getElementById('reset-screen').style.display = 'none';
+        const ls = document.getElementById('login-screen');
+        ls.style.display = 'flex'; ls.style.flexDirection = 'column';
+        // Vyčisti token z URL
+        history.replaceState(null, '', window.location.pathname);
+      }, 2000);
+    } catch(e) {
+      errEl.textContent = 'Nepodařilo se změnit heslo. Zkuste si vyžádat nový odkaz.';
+      errEl.style.display = 'block';
+      btn.disabled = false; btn.textContent = 'Uložit nové heslo';
+    }
+  }
+
   // ── INIT ──────────────────────────────────────────────────
   (async () => {
+    // Supabase posílá token v URL fragmentu: #access_token=...&type=recovery
+    const hash = window.location.hash;
+    if (hash.includes('type=recovery')) {
+      const params = new URLSearchParams(hash.slice(1));
+      resetToken = params.get('access_token');
+      if (resetToken) { showResetScreen(); return; }
+    }
+
     const valid = await tryRestoreSession();
     if (valid) { showApp(); }
     else { const ls = document.getElementById('login-screen'); ls.style.display = 'flex'; ls.style.flexDirection = 'column'; }
