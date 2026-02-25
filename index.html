@@ -632,13 +632,39 @@
   async function insertCat(data) { const res = await sbFetch('cats', { method: 'POST', prefer: 'return=representation', body: JSON.stringify(data) }); if (!res.ok) throw new Error(); return (await res.json())[0]; }
   async function updateCat(id, data) { const res = await sbFetch(`cats?id=eq.${id}`, { method: 'PATCH', prefer: 'return=representation', body: JSON.stringify(data) }); if (!res.ok) throw new Error(); }
   async function deleteCat(id) { const res = await sbFetch(`cats?id=eq.${id}`, { method: 'DELETE' }); if (!res.ok) throw new Error(); }
+
+  // ── KOMPRIMACE FOTKY ──────────────────────────────────────
+  // Zmenší fotku na max 1200px, kvalita JPEG 85% — typicky z 3–5 MB na ~200–400 KB
+  function compressImage(file) {
+    return new Promise((resolve) => {
+      const MAX_PX = 1200;
+      const QUALITY = 0.85;
+      const img = new Image();
+      const url = URL.createObjectURL(file);
+      img.onload = () => {
+        URL.revokeObjectURL(url);
+        let { width, height } = img;
+        if (width > MAX_PX || height > MAX_PX) {
+          if (width >= height) { height = Math.round(height * MAX_PX / width); width = MAX_PX; }
+          else { width = Math.round(width * MAX_PX / height); height = MAX_PX; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => resolve(blob || file), 'image/jpeg', QUALITY);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file); };
+      img.src = url;
+    });
+  }
+
   async function uploadPhoto(file, catId) {
-    const ext = file.name.split('.').pop();
-    const path = `${catId}.${ext}`;
+    const compressed = await compressImage(file);
+    const path = `${catId}.jpg`;
     const res = await fetch(`${SUPABASE_URL}/storage/v1/object/cat-photos/${path}`, {
       method: 'POST',
-      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authToken}`, 'Content-Type': file.type, 'x-upsert': 'true' },
-      body: file
+      headers: { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${authToken}`, 'Content-Type': 'image/jpeg', 'x-upsert': 'true' },
+      body: compressed
     });
     if (!res.ok) throw new Error('Nahrání fotografie selhalo');
     return `${SUPABASE_URL}/storage/v1/object/public/cat-photos/${path}`;
